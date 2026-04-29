@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FY-IPTV · 管理后台</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+  *{font-family:'Inter',sans-serif}
+  .gradient-text{background:linear-gradient(135deg,#a78bfa,#60a5fa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .glass{background:rgba(255,255,255,0.04);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.08)}
+  .btn-primary{background:linear-gradient(135deg,#7c3aed,#3b82f6)}
+  .nav-item{transition:all .15s}
+  .nav-item.active,.nav-item:hover{background:rgba(124,58,237,.2);color:#a78bfa}
+  input,select{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#e2e8f0}
+  input:focus,select:focus{outline:none;border-color:#7c3aed}
+</style>
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen" x-data="admin()" x-init="init()">
+
+<div class="flex min-h-screen">
+  <!-- Sidebar -->
+  <aside class="hidden md:flex flex-col w-56 bg-gray-900/60 border-r border-white/5 p-4 gap-1 fixed h-full z-10">
+    <div class="flex items-center gap-2 px-3 py-2 mb-4">
+      <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
+        <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zm12.553 1.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/></svg>
+      </div>
+      <span class="font-bold text-sm">FY-IPTV 管理</span>
+    </div>
+    <template x-for="item in navItems">
+      <button @click="page=item.id" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-400" :class="page===item.id?'active':''">
+        <span x-text="item.icon"></span>
+        <span x-text="item.label"></span>
+      </button>
+    </template>
+    <div class="mt-auto">
+      <a href="/dashboard.html" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-500 w-full">
+        <span>👤</span><span>用户中心</span>
+      </a>
+      <button @click="logout" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-500 w-full">
+        <span>🚪</span><span>退出</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Mobile nav -->
+  <div class="md:hidden fixed top-0 left-0 right-0 z-20 bg-gray-900/80 backdrop-blur border-b border-white/5 flex items-center justify-between px-4 py-3">
+    <span class="font-bold text-sm gradient-text">管理后台</span>
+    <div class="flex gap-3">
+      <template x-for="item in navItems">
+        <button @click="page=item.id" class="text-base" :class="page===item.id?'opacity-100':'opacity-40'" x-text="item.icon"></button>
+      </template>
+    </div>
+  </div>
+
+  <main class="flex-1 md:ml-56 p-4 md:p-8 pt-16 md:pt-8">
+
+    <!-- 统计概览 -->
+    <div x-show="page==='stats'">
+      <h2 class="text-xl font-bold mb-6">数据概览</h2>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div class="glass rounded-2xl p-5">
+          <p class="text-gray-400 text-xs mb-1">总用户</p>
+          <p class="text-2xl font-bold gradient-text" x-text="stats.total_users||0"></p>
+        </div>
+        <div class="glass rounded-2xl p-5">
+          <p class="text-gray-400 text-xs mb-1">活跃订阅</p>
+          <p class="text-2xl font-bold text-green-400" x-text="stats.active_users||0"></p>
+        </div>
+        <div class="glass rounded-2xl p-5">
+          <p class="text-gray-400 text-xs mb-1">总订单</p>
+          <p class="text-2xl font-bold text-blue-400" x-text="stats.total_orders||0"></p>
+        </div>
+        <div class="glass rounded-2xl p-5">
+          <p class="text-gray-400 text-xs mb-1">总收入</p>
+          <p class="text-2xl font-bold gradient-text">¥<span x-text="stats.revenue||0"></span></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 用户管理 -->
+    <div x-show="page==='users'">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-xl font-bold">用户管理</h2>
+        <div class="text-sm text-gray-400" x-text="`共 ${usersTotal} 名用户`"></div>
+      </div>
+      <div class="flex gap-2 mb-4">
+        <input x-model="userSearch" @keydown.enter="loadUsers(1)" placeholder="搜索用户名..." class="rounded-xl px-3 py-2 text-sm flex-1 max-w-xs">
+        <button @click="loadUsers(1)" class="btn-primary px-4 py-2 rounded-xl text-sm text-white">搜索</button>
+      </div>
+      <div class="glass rounded-2xl overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-white/5 text-gray-400 text-xs">
+                <th class="px-4 py-3 text-left">用户名</th>
+                <th class="px-4 py-3 text-left">到期时间</th>
+                <th class="px-4 py-3 text-left">设备数</th>
+                <th class="px-4 py-3 text-left">状态</th>
+                <th class="px-4 py-3 text-left">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="u in users" :key="u.id">
+                <tr class="border-b border-white/5 hover:bg-white/2 transition-colors">
+                  <td class="px-4 py-3">
+                    <div class="flex items-center gap-2">
+                      <span x-text="u.username"></span>
+                      <span x-show="u.is_admin" class="text-xs bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded">管理员</span>
+                    </div>
+                  </td>
+                  <td class="px-4 py-3">
+                    <div x-show="u.expired_at">
+                      <span x-text="fmtDate(u.expired_at)"></span>
+                      <span class="text-xs ml-1" :class="u.days_left>0?'text-green-400':'text-red-400'" x-text="`(剩${u.days_left}天)`"></span>
+                    </div>
+                    <span x-show="!u.expired_at" class="text-gray-500">未订阅</span>
+                  </td>
+                  <td class="px-4 py-3 text-gray-300" x-text="u.max_devices"></td>
+                  <td class="px-4 py-3">
+                    <span class="text-xs px-2 py-0.5 rounded-full" :class="u.is_active?'bg-green-500/20 text-green-400':'bg-red-500/20 text-red-400'" x-text="u.is_active?'正常':'已禁用'"></span>
+                  </td>
+                  <td class="px-4 py-3">
+                    <button @click="openEdit(u)" class="text-xs text-purple-400 hover:text-purple-300 mr-3">编辑</button>
+                    <button @click="toggleUser(u)" class="text-xs" :class="u.is_active?'text-red-400 hover:text-red-300':'text-green-400 hover:text-green-300'" x-text="u.is_active?'禁用':'启用'"></button>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+        <div class="flex justify-between items-center px-4 py-3 border-t border-white/5">
+          <button @click="loadUsers(userPage-1)" :disabled="userPage<=1" class="text-xs text-gray-400 disabled:opacity-30">← 上一页</button>
+          <span class="text-xs text-gray-500" x-text="`第 ${userPage} 页`"></span>
+          <button @click="loadUsers(userPage+1)" :disabled="users.length<20" class="text-xs text-gray-400 disabled:opacity-30">下一页 →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 套餐管理 -->
+    <div x-show="page==='plans'">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-xl font-bold">套餐管理</h2>
+        <button @click="openPlan(null)" class="btn-primary px-4 py-2 rounded-xl text-sm text-white">+ 新增套餐</button>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <template x-for="p in adminPlans" :key="p.id">
+          <div class="glass rounded-2xl p-5 relative">
+            <span x-show="!p.is_active" class="absolute top-3 right-3 text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full">已下架</span>
+            <h3 class="font-semibold mb-2" x-text="p.name"></h3>
+            <p class="text-2xl font-bold gradient-text">¥<span x-text="p.price"></span></p>
+            <p class="text-gray-400 text-sm mt-1" x-text="`${p.duration_days} 天`"></p>
+            <p class="text-gray-500 text-xs mt-1" x-text="p.description"></p>
+            <div class="flex gap-2 mt-4">
+              <button @click="openPlan(p)" class="text-xs text-purple-400 hover:text-purple-300">编辑</button>
+              <span class="text-gray-600">·</span>
+              <button @click="deletePlan(p.id)" class="text-xs text-red-400 hover:text-red-300">下架</button>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <!-- 邀请码 -->
+    <div x-show="page==='invites'">
+      <h2 class="text-xl font-bold mb-6">邀请码管理</h2>
+      <div class="glass rounded-2xl p-5 mb-4">
+        <div class="flex gap-3 flex-wrap">
+          <input x-model="inviteCount" type="number" min="1" max="50" placeholder="生成数量" class="rounded-xl px-3 py-2 text-sm w-24">
+          <input x-model="inviteMaxUses" type="number" min="1" placeholder="每码可用次数" class="rounded-xl px-3 py-2 text-sm w-32">
+          <input x-model="inviteNote" placeholder="备注（可选）" class="rounded-xl px-3 py-2 text-sm flex-1 min-w-32">
+          <button @click="genInvites" class="btn-primary px-4 py-2 rounded-xl text-sm text-white whitespace-nowrap">生成邀请码</button>
+        </div>
+        <div x-show="newCodes.length" class="mt-4 p-3 bg-gray-800/50 rounded-xl" x-transition>
+          <p class="text-xs text-gray-400 mb-2">新生成的邀请码：</p>
+          <div class="flex flex-wrap gap-2">
+            <template x-for="c in newCodes">
+              <span class="font-mono text-xs bg-purple-500/20 text-purple-300 px-2 py-1 rounded cursor-pointer" @click="copyText(c)" x-text="c"></span>
+            </template>
+          </div>
+          <p class="text-xs text-gray-500 mt-2">点击复制单个，或 <button @click="copyAll" class="text-purple-400 hover:underline">一键复制全部</button></p>
+        </div>
+      </div>
+      <div class="glass rounded-2xl overflow-hidden">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-white/5 text-gray-400 text-xs">
+              <th class="px-4 py-3 text-left">邀请码</th>
+              <th class="px-4 py-3 text-left">已用/上限</th>
+              <th class="px-4 py-3 text-left">备注</th>
+              <th class="px-4 py-3 text-left">创建时间</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="c in invites" :key="c.id">
+              <tr class="border-b border-white/5 hover:bg-white/2">
+                <td class="px-4 py-3 font-mono text-purple-300" x-text="c.code"></td>
+                <td class="px-4 py-3">
+                  <span :class="c.use_count>=c.max_uses?'text-red-400':'text-green-400'" x-text="`${c.use_count}/${c.max_uses}`"></span>
+                </td>
+                <td class="px-4 py-3 text-gray-400 text-xs" x-text="c.note||'-'"></td>
+                <td class="px-4 py-3 text-gray-500 text-xs" x-text="fmtDate(c.created_at)"></td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 订单记录 -->
+    <div x-show="page==='orders'">
+      <h2 class="text-xl font-bold mb-6">订单记录</h2>
+      <div class="glass rounded-2xl overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-white/5 text-gray-400 text-xs">
+                <th class="px-4 py-3 text-left">用户</th>
+                <th class="px-4 py-3 text-left">金额</th>
+                <th class="px-4 py-3 text-left">时长</th>
+                <th class="px-4 py-3 text-left">支付方式</th>
+                <th class="px-4 py-3 text-left">状态</th>
+                <th class="px-4 py-3 text-left">时间</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="o in adminOrders" :key="o.out_trade_no">
+                <tr class="border-b border-white/5 hover:bg-white/2">
+                  <td class="px-4 py-3 font-medium" x-text="o.username"></td>
+                  <td class="px-4 py-3 font-semibold gradient-text">¥<span x-text="o.amount"></span></td>
+                  <td class="px-4 py-3 text-gray-400" x-text="`${o.duration_days}天`"></td>
+                  <td class="px-4 py-3 text-gray-400 text-xs" x-text="o.payment_type||'-'"></td>
+                  <td class="px-4 py-3">
+                    <span class="text-xs px-2 py-0.5 rounded-full" :class="o.status===1?'bg-green-500/20 text-green-400':'bg-yellow-500/20 text-yellow-400'" x-text="o.status===1?'已支付':'待支付'"></span>
+                  </td>
+                  <td class="px-4 py-3 text-gray-500 text-xs" x-text="fmtDate(o.created_at)"></td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+        <div class="flex justify-between items-center px-4 py-3 border-t border-white/5">
+          <button @click="loadOrders(orderPage-1)" :disabled="orderPage<=1" class="text-xs text-gray-400 disabled:opacity-30">← 上一页</button>
+          <span class="text-xs text-gray-500" x-text="`第 ${orderPage} 页`"></span>
+          <button @click="loadOrders(orderPage+1)" :disabled="adminOrders.length<20" class="text-xs text-gray-400 disabled:opacity-30">下一页 →</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Edit User Modal -->
+<div x-show="editUser" x-transition class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="editUser=null">
+  <div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+  <div class="relative glass rounded-2xl p-6 w-full max-w-sm" @click.stop x-show="editUser">
+    <h3 class="font-semibold mb-4" x-text="`编辑用户：${editUser?.username}`"></h3>
+    <div class="space-y-3">
+      <div>
+        <label class="text-xs text-gray-400 mb-1 block">增加天数（负数减少）</label>
+        <input x-model.number="editForm.add_days" type="number" placeholder="0" class="w-full rounded-xl px-3 py-2.5 text-sm">
+      </div>
+      <div>
+        <label class="text-xs text-gray-400 mb-1 block">最大同时设备数</label>
+        <input x-model.number="editForm.max_devices" type="number" min="1" max="10" class="w-full rounded-xl px-3 py-2.5 text-sm">
+      </div>
+    </div>
+    <div class="flex gap-2 mt-5">
+      <button @click="editUser=null" class="flex-1 py-2.5 glass rounded-xl text-sm">取消</button>
+      <button @click="saveUser" class="flex-1 btn-primary py-2.5 rounded-xl text-sm text-white">保存</button>
+    </div>
+    <button @click="resetUserToken" class="w-full mt-2 py-2 text-xs text-gray-500 hover:text-red-400 transition-colors">重置订阅地址</button>
+  </div>
+</div>
+
+<!-- Plan Modal -->
+<div x-show="planModal" x-transition class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="planModal=false">
+  <div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+  <div class="relative glass rounded-2xl p-6 w-full max-w-sm" @click.stop>
+    <h3 class="font-semibold mb-4" x-text="planForm.id?'编辑套餐':'新增套餐'"></h3>
+    <div class="space-y-3">
+      <input x-model="planForm.name" placeholder="套餐名称（如：月卡）" class="w-full rounded-xl px-3 py-2.5 text-sm">
+      <input x-model.number="planForm.price" type="number" step="0.01" placeholder="价格（元）" class="w-full rounded-xl px-3 py-2.5 text-sm">
+      <input x-model.number="planForm.duration_days" type="number" placeholder="有效天数" class="w-full rounded-xl px-3 py-2.5 text-sm">
+      <input x-model="planForm.description" placeholder="描述（可选）" class="w-full rounded-xl px-3 py-2.5 text-sm">
+      <input x-model.number="planForm.sort_order" type="number" placeholder="排序（数字越小越靠前）" class="w-full rounded-xl px-3 py-2.5 text-sm">
+    </div>
+    <div class="flex gap-2 mt-5">
+      <button @click="planModal=false" class="flex-1 py-2.5 glass rounded-xl text-sm">取消</button>
+      <button @click="savePlan" class="flex-1 btn-primary py-2.5 rounded-xl text-sm text-white">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function admin() {
+  return {
+    page: 'stats',
+    stats: {},
+    users: [], usersTotal: 0, userPage: 1, userSearch: '',
+    adminPlans: [],
+    adminOrders: [], orderPage: 1,
+    invites: [], newCodes: [],
+    inviteCount: 5, inviteMaxUses: 1, inviteNote: '',
+    editUser: null, editForm: {},
+    planModal: false, planForm: {},
+    navItems: [
+      {id:'stats', icon:'📊', label:'数据概览'},
+      {id:'users', icon:'👥', label:'用户管理'},
+      {id:'plans', icon:'💎', label:'套餐管理'},
+      {id:'invites', icon:'🎟️', label:'邀请码'},
+      {id:'orders', icon:'📋', label:'订单记录'},
+    ],
+
+    async init() {
+      const token = localStorage.getItem('token');
+      if (!token) { window.location.href = '/'; return; }
+      await Promise.all([this.loadStats(), this.loadUsers(1), this.loadAdminPlans(),
+                         this.loadInvites(), this.loadOrders(1)]);
+    },
+
+    async api(path, opts={}) {
+      const token = localStorage.getItem('token');
+      const r = await fetch(path, {
+        ...opts,
+        headers: {'Authorization': `Bearer ${token}`, 'Content-Type':'application/json', ...(opts.headers||{})}
+      });
+      if (r.status === 401) { localStorage.clear(); window.location.href = '/'; return null; }
+      if (r.status === 403) { alert('无管理员权限'); window.location.href = '/dashboard.html'; return null; }
+      return r;
+    },
+
+    async loadStats() {
+      const r = await this.api('/api/admin/stats');
+      if (r) this.stats = await r.json();
+    },
+
+    async loadUsers(page) {
+      this.userPage = page;
+      const r = await this.api(`/api/admin/users?page=${page}&q=${this.userSearch}`);
+      if (r) { const d = await r.json(); this.users = d.users; this.usersTotal = d.total; }
+    },
+
+    async loadAdminPlans() {
+      const r = await this.api('/api/admin/plans');
+      if (r) this.adminPlans = await r.json();
+    },
+
+    async loadInvites() {
+      const r = await this.api('/api/admin/invites');
+      if (r) this.invites = await r.json();
+    },
+
+    async loadOrders(page) {
+      this.orderPage = page;
+      const r = await this.api(`/api/admin/orders?page=${page}`);
+      if (r) { const d = await r.json(); this.adminOrders = d.orders; }
+    },
+
+    openEdit(u) {
+      this.editUser = u;
+      this.editForm = { add_days: 0, max_devices: u.max_devices };
+    },
+
+    async saveUser() {
+      const body = {};
+      if (this.editForm.add_days) body.add_days = this.editForm.add_days;
+      if (this.editForm.max_devices) body.max_devices = this.editForm.max_devices;
+      const r = await this.api(`/api/admin/users/${this.editUser.id}`, { method:'PATCH', body: JSON.stringify(body) });
+      if (r) { this.editUser = null; this.loadUsers(this.userPage); }
+    },
+
+    async toggleUser(u) {
+      const r = await this.api(`/api/admin/users/${u.id}`, { method:'PATCH', body: JSON.stringify({is_active: !u.is_active}) });
+      if (r) { u.is_active = !u.is_active; }
+    },
+
+    async resetUserToken() {
+      if (!confirm('确认重置该用户的订阅地址？')) return;
+      const r = await this.api(`/api/admin/users/${this.editUser.id}/reset-token`, {method:'POST'});
+      if (r) { alert('已重置'); this.editUser = null; }
+    },
+
+    openPlan(p) {
+      this.planForm = p ? {...p} : { name:'', price:0, duration_days:30, description:'', sort_order:0 };
+      this.planModal = true;
+    },
+
+    async savePlan() {
+      const isEdit = !!this.planForm.id;
+      const url = isEdit ? `/api/admin/plans/${this.planForm.id}` : '/api/admin/plans';
+      const r = await this.api(url, { method: isEdit?'PATCH':'POST', body: JSON.stringify(this.planForm) });
+      if (r) { this.planModal = false; this.loadAdminPlans(); }
+    },
+
+    async deletePlan(id) {
+      if (!confirm('确认下架该套餐？')) return;
+      const r = await this.api(`/api/admin/plans/${id}`, {method:'DELETE'});
+      if (r) this.loadAdminPlans();
+    },
+
+    async genInvites() {
+      const r = await this.api('/api/admin/invites', {
+        method: 'POST',
+        body: JSON.stringify({ count: this.inviteCount, max_uses: this.inviteMaxUses, note: this.inviteNote })
+      });
+      if (r) { const d = await r.json(); this.newCodes = d.codes; this.loadInvites(); }
+    },
+
+    async copyText(text) {
+      await navigator.clipboard.writeText(text);
+    },
+
+    async copyAll() {
+      await navigator.clipboard.writeText(this.newCodes.join('\n'));
+      alert('已复制全部邀请码');
+    },
+
+    logout() { localStorage.clear(); window.location.href = '/'; },
+
+    fmtDate(s) {
+      if (!s) return '-';
+      return new Date(s).toLocaleDateString('zh-CN', {year:'numeric',month:'2-digit',day:'2-digit'});
+    },
+  }
+}
+</script>
+</body>
+</html>

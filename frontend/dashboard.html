@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FY-IPTV · 用户中心</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+  *{font-family:'Inter',sans-serif}
+  .gradient-text{background:linear-gradient(135deg,#a78bfa,#60a5fa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .glass{background:rgba(255,255,255,0.04);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.08)}
+  .btn-primary{background:linear-gradient(135deg,#7c3aed,#3b82f6);transition:all .2s}
+  .btn-primary:hover{opacity:.9;transform:translateY(-1px)}
+  .progress-bar{background:linear-gradient(90deg,#7c3aed,#3b82f6)}
+  .nav-item{transition:all .15s}
+  .nav-item.active,.nav-item:hover{background:rgba(124,58,237,.2);color:#a78bfa}
+  .pay-btn{transition:all .15s;border:1px solid rgba(255,255,255,.1)}
+  .pay-btn:hover,.pay-btn.selected{border-color:#7c3aed;background:rgba(124,58,237,.15)}
+  .pay-btn.selected .check{display:block}
+  .check{display:none}
+</style>
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen" x-data="dash()" x-init="init()">
+
+<div class="flex min-h-screen">
+  <!-- Sidebar -->
+  <aside class="hidden md:flex flex-col w-56 bg-gray-900/60 border-r border-white/5 p-4 gap-1 fixed h-full">
+    <div class="flex items-center gap-2 px-3 py-2 mb-4">
+      <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
+        <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zm12.553 1.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/></svg>
+      </div>
+      <span class="font-bold text-sm">FY-IPTV</span>
+    </div>
+    <template x-for="item in navItems">
+      <button @click="page=item.id" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-400" :class="page===item.id?'active':''">
+        <span x-text="item.icon"></span>
+        <span x-text="item.label"></span>
+      </button>
+    </template>
+    <div class="mt-auto">
+      <div class="text-xs text-gray-600 px-3 mb-2" x-text="username"></div>
+      <button @click="logout" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-500 w-full">
+        <span>🚪</span><span>退出登录</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Mobile top nav -->
+  <div class="md:hidden fixed top-0 left-0 right-0 z-20 bg-gray-900/80 backdrop-blur border-b border-white/5 flex items-center justify-between px-4 py-3">
+    <span class="font-bold gradient-text">FY-IPTV</span>
+    <div class="flex gap-2">
+      <template x-for="item in navItems">
+        <button @click="page=item.id" class="text-lg" :class="page===item.id?'opacity-100':'opacity-40'" x-text="item.icon"></button>
+      </template>
+      <button @click="logout" class="text-lg opacity-40">🚪</button>
+    </div>
+  </div>
+
+  <!-- Main content -->
+  <main class="flex-1 md:ml-56 p-4 md:p-8 pt-16 md:pt-8">
+
+    <!-- 订阅状态 -->
+    <div x-show="page==='home'">
+      <h2 class="text-xl font-bold mb-6">我的订阅</h2>
+
+      <!-- Status Card -->
+      <div class="glass rounded-2xl p-6 mb-4">
+        <div class="flex items-start justify-between mb-4">
+          <div>
+            <p class="text-gray-400 text-sm">订阅状态</p>
+            <div class="flex items-center gap-2 mt-1">
+              <span class="w-2 h-2 rounded-full" :class="user.is_expired?'bg-red-400':'bg-green-400 animate-pulse'"></span>
+              <span class="font-semibold text-lg" x-text="user.is_expired?'已过期':'订阅中'"></span>
+            </div>
+          </div>
+          <div class="text-right">
+            <p class="text-gray-400 text-sm">到期时间</p>
+            <p class="font-medium mt-1" x-text="user.expired_at ? fmtDate(user.expired_at) : '未订阅'"></p>
+          </div>
+        </div>
+        <!-- Progress bar -->
+        <div x-show="!user.is_expired && user.days_left > 0">
+          <div class="flex justify-between text-xs text-gray-400 mb-1.5">
+            <span>剩余有效期</span>
+            <span x-text="`${user.days_left} 天`"></span>
+          </div>
+          <div class="h-2 bg-gray-800 rounded-full overflow-hidden">
+            <div class="progress-bar h-full rounded-full transition-all duration-1000"
+              :style="`width:${Math.min(100, user.days_left / 365 * 100)}%`"></div>
+          </div>
+        </div>
+        <div x-show="user.is_expired" class="text-center py-2">
+          <p class="text-gray-400 text-sm">订阅已过期，请购买套餐继续使用</p>
+          <button @click="page='plans'" class="btn-primary mt-2 px-4 py-1.5 rounded-lg text-sm text-white">去购买</button>
+        </div>
+      </div>
+
+      <!-- M3U URL Card -->
+      <div class="glass rounded-2xl p-6 mb-4" x-show="!user.is_expired">
+        <p class="text-gray-400 text-sm mb-3">我的订阅地址</p>
+        <div class="flex gap-2 mb-3">
+          <input :value="user.m3u_url" readonly class="flex-1 bg-gray-800/50 border border-white/10 rounded-xl px-3 py-2.5 text-xs font-mono focus:outline-none text-gray-300" @click="$el.select()">
+          <button @click="copy(user.m3u_url)" class="px-4 py-2.5 glass rounded-xl text-sm hover:border-purple-500/50 transition-colors whitespace-nowrap">
+            <span x-text="copied?'✓ 已复制':'复制'"></span>
+          </button>
+        </div>
+        <div class="flex gap-2">
+          <button @click="showQr=!showQr" class="text-xs text-gray-400 hover:text-purple-400 transition-colors">📱 二维码</button>
+          <span class="text-gray-600">·</span>
+          <button @click="resetToken" class="text-xs text-gray-400 hover:text-red-400 transition-colors">🔄 重置地址</button>
+        </div>
+        <div x-show="showQr" class="mt-4 flex justify-center" x-transition>
+          <div id="qrcode" class="p-3 bg-white rounded-xl"></div>
+        </div>
+      </div>
+
+      <!-- Devices Card -->
+      <div class="glass rounded-2xl p-6">
+        <div class="flex items-center justify-between mb-3">
+          <p class="text-gray-400 text-sm">活跃设备</p>
+          <span class="text-xs text-gray-500" x-text="`${user.active_devices?.length || 0} / ${user.max_devices}`"></span>
+        </div>
+        <div x-show="!user.active_devices?.length" class="text-gray-600 text-sm text-center py-4">暂无活跃设备</div>
+        <template x-for="d in user.active_devices">
+          <div class="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
+            <div class="flex items-center gap-2">
+              <span class="text-green-400 text-xs">●</span>
+              <span class="font-mono text-sm" x-text="d.ip"></span>
+            </div>
+            <span class="text-xs text-gray-500" x-text="fmtAgo(d.last_seen)"></span>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <!-- 购买套餐 -->
+    <div x-show="page==='plans'">
+      <h2 class="text-xl font-bold mb-6">购买套餐</h2>
+
+      <!-- Plan cards -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <template x-for="(p, i) in plans" :key="p.id">
+          <div @click="selectedPlan=p" class="glass rounded-2xl p-5 cursor-pointer transition-all"
+            :class="selectedPlan?.id===p.id?'border-purple-500/60 bg-purple-500/10':''">
+            <div class="flex justify-between items-start mb-2">
+              <span class="font-semibold" x-text="p.name"></span>
+              <span x-show="i===1" class="text-xs bg-gradient-to-r from-purple-500 to-blue-500 text-white px-2 py-0.5 rounded-full">推荐</span>
+            </div>
+            <div class="text-3xl font-extrabold gradient-text my-3">¥<span x-text="p.price"></span></div>
+            <p class="text-gray-400 text-sm" x-text="`${p.duration_days} 天`"></p>
+            <p class="text-gray-500 text-xs mt-1" x-text="p.description"></p>
+          </div>
+        </template>
+      </div>
+
+      <!-- Payment method -->
+      <div x-show="selectedPlan" class="glass rounded-2xl p-6" x-transition>
+        <p class="text-gray-400 text-sm mb-4">选择支付方式</p>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <template x-for="pm in payMethods">
+            <button @click="payType=pm.id" class="pay-btn rounded-xl p-3 flex flex-col items-center gap-1.5" :class="payType===pm.id?'selected':''">
+              <span class="text-2xl" x-text="pm.icon"></span>
+              <span class="text-xs" x-text="pm.name"></span>
+              <span class="check text-green-400 text-xs">✓</span>
+            </button>
+          </template>
+        </div>
+        <div class="flex items-center justify-between glass rounded-xl px-4 py-3 mb-4">
+          <span class="text-gray-400 text-sm">应付金额</span>
+          <span class="text-xl font-bold gradient-text">¥<span x-text="selectedPlan?.price"></span></span>
+        </div>
+        <button @click="doPay" :disabled="payLoading" class="btn-primary w-full py-3.5 rounded-xl font-semibold text-white disabled:opacity-50">
+          <span x-show="!payLoading">确认支付</span>
+          <span x-show="payLoading">跳转中...</span>
+        </button>
+        <p class="text-center text-gray-600 text-xs mt-3">支付完成后有效期自动延长</p>
+      </div>
+    </div>
+
+    <!-- 订单记录 -->
+    <div x-show="page==='orders'">
+      <h2 class="text-xl font-bold mb-6">订单记录</h2>
+      <div class="glass rounded-2xl overflow-hidden">
+        <div x-show="!orders.length" class="text-center py-12 text-gray-500">暂无订单记录</div>
+        <template x-for="o in orders" :key="o.out_trade_no">
+          <div class="flex items-center justify-between px-5 py-4 border-b border-white/5 last:border-0">
+            <div>
+              <p class="text-sm font-medium" x-text="o.out_trade_no"></p>
+              <p class="text-xs text-gray-500 mt-0.5" x-text="`${o.duration_days}天 · ${fmtDate(o.created_at)}`"></p>
+            </div>
+            <div class="text-right">
+              <p class="font-semibold gradient-text">¥<span x-text="o.amount"></span></p>
+              <span class="text-xs px-2 py-0.5 rounded-full mt-1 inline-block"
+                :class="o.status===1?'bg-green-500/20 text-green-400':'bg-yellow-500/20 text-yellow-400'"
+                x-text="o.status===1?'已支付':'待支付'"></span>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+function dash() {
+  return {
+    page: 'home',
+    username: localStorage.getItem('username') || '',
+    user: {},
+    plans: [],
+    orders: [],
+    selectedPlan: null,
+    payType: 'alipay',
+    payLoading: false,
+    copied: false,
+    showQr: false,
+    qrGenerated: false,
+    navItems: [
+      {id:'home', icon:'📺', label:'我的订阅'},
+      {id:'plans', icon:'💎', label:'购买套餐'},
+      {id:'orders', icon:'📋', label:'订单记录'},
+    ],
+    payMethods: [
+      {id:'alipay', icon:'💙', name:'支付宝'},
+      {id:'wxpay', icon:'💚', name:'微信支付'},
+      {id:'qqpay', icon:'💛', name:'QQ钱包'},
+      {id:'bank', icon:'🏦', name:'云闪付'},
+    ],
+
+    async init() {
+      const token = localStorage.getItem('token');
+      if (!token) { window.location.href = '/'; return; }
+      await Promise.all([this.loadUser(), this.loadPlans(), this.loadOrders()]);
+    },
+
+    async api(path, opts={}) {
+      const token = localStorage.getItem('token');
+      const r = await fetch(path, {
+        ...opts,
+        headers: {'Authorization': `Bearer ${token}`, 'Content-Type':'application/json', ...(opts.headers||{})}
+      });
+      if (r.status === 401) { this.logout(); return null; }
+      return r;
+    },
+
+    async loadUser() {
+      const r = await this.api('/api/user/me');
+      if (r) this.user = await r.json();
+    },
+
+    async loadPlans() {
+      const r = await fetch('/api/orders/plans');
+      this.plans = await r.json();
+      if (this.plans.length) this.selectedPlan = this.plans[1] || this.plans[0];
+    },
+
+    async loadOrders() {
+      const r = await this.api('/api/orders/my');
+      if (r) this.orders = await r.json();
+    },
+
+    async copy(text) {
+      await navigator.clipboard.writeText(text);
+      this.copied = true;
+      setTimeout(() => this.copied = false, 2000);
+    },
+
+    async resetToken() {
+      if (!confirm('重置后当前订阅地址将失效，确认重置？')) return;
+      const r = await this.api('/api/user/reset-token', {method:'POST'});
+      if (r) {
+        const d = await r.json();
+        this.user.m3u_url = d.m3u_url;
+        this.user.m3u_token = d.m3u_token;
+        this.qrGenerated = false;
+        this.showQr = false;
+      }
+    },
+
+    async doPay() {
+      if (!this.selectedPlan) return;
+      this.payLoading = true;
+      try {
+        const r = await this.api('/api/orders/create', {
+          method: 'POST',
+          body: JSON.stringify({plan_id: this.selectedPlan.id, pay_type: this.payType})
+        });
+        if (r) {
+          const d = await r.json();
+          window.location.href = d.pay_url;
+        }
+      } finally { this.payLoading = false; }
+    },
+
+    logout() {
+      localStorage.clear();
+      window.location.href = '/';
+    },
+
+    fmtDate(s) {
+      if (!s) return '-';
+      return new Date(s).toLocaleDateString('zh-CN', {year:'numeric',month:'2-digit',day:'2-digit'});
+    },
+
+    fmtAgo(s) {
+      const diff = Math.floor((Date.now() - new Date(s+'Z')) / 60000);
+      if (diff < 1) return '刚刚';
+      if (diff < 60) return `${diff}分钟前`;
+      return `${Math.floor(diff/60)}小时前`;
+    },
+  }
+}
+
+// QR code watch
+document.addEventListener('alpine:initialized', () => {
+  Alpine.effect(() => {
+    const dash = Alpine.$data(document.querySelector('[x-data]'));
+    if (dash && dash.showQr && !dash.qrGenerated && dash.user.m3u_url) {
+      setTimeout(() => {
+        document.getElementById('qrcode').innerHTML = '';
+        new QRCode(document.getElementById('qrcode'), {
+          text: dash.user.m3u_url, width: 160, height: 160,
+          colorDark: '#1e1b4b', colorLight: '#ffffff'
+        });
+        dash.qrGenerated = true;
+      }, 50);
+    }
+  });
+});
+</script>
+</body>
+</html>

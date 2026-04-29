@@ -1,0 +1,16 @@
+{
+  "app": {
+    "secret_key": "change-this-to-a-random-secret-key-32chars",
+    "base_url": "http://38.207.176.122:8091",
+    "title": "FY-IPTV"
+  },
+  "registration": {
+    "mode": "open"
+  },
+  "payment": {
+    "apiurl": "https://pay.example.com/",
+    "pid": "1000",
+    "platform_public_key": "填写平台公钥",
+    "merchant_private_key": "填写商户私钥"
+  }
+}

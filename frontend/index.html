@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FY-IPTV · 高清直播订阅</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+  *{font-family:'Inter',sans-serif}
+  .gradient-text{background:linear-gradient(135deg,#a78bfa,#60a5fa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .glass{background:rgba(255,255,255,0.05);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.1)}
+  .btn-primary{background:linear-gradient(135deg,#7c3aed,#3b82f6);transition:all .2s}
+  .btn-primary:hover{opacity:.9;transform:translateY(-1px);box-shadow:0 8px 25px rgba(124,58,237,.4)}
+  .particle{position:absolute;border-radius:50%;animation:float linear infinite;opacity:.15}
+  @keyframes float{0%{transform:translateY(100vh) rotate(0);opacity:.15}100%{transform:translateY(-100px) rotate(720deg);opacity:0}}
+  .tab-active{border-bottom:2px solid #7c3aed;color:#a78bfa}
+  input:-webkit-autofill{-webkit-box-shadow:0 0 0 1000px #1e1b4b inset;-webkit-text-fill-color:#e2e8f0}
+</style>
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen overflow-x-hidden" x-data="app()">
+
+<!-- Background particles -->
+<div class="fixed inset-0 pointer-events-none overflow-hidden">
+  <div class="particle w-2 h-2 bg-purple-500" style="left:10%;animation-duration:12s;animation-delay:0s"></div>
+  <div class="particle w-1 h-1 bg-blue-400" style="left:25%;animation-duration:18s;animation-delay:3s"></div>
+  <div class="particle w-3 h-3 bg-indigo-400" style="left:40%;animation-duration:15s;animation-delay:6s"></div>
+  <div class="particle w-1 h-1 bg-purple-300" style="left:60%;animation-duration:20s;animation-delay:1s"></div>
+  <div class="particle w-2 h-2 bg-blue-500" style="left:75%;animation-duration:14s;animation-delay:8s"></div>
+  <div class="particle w-1 h-1 bg-violet-400" style="left:88%;animation-duration:16s;animation-delay:4s"></div>
+</div>
+
+<!-- Nav -->
+<nav class="relative z-10 flex items-center justify-between px-6 py-4 max-w-6xl mx-auto">
+  <div class="flex items-center gap-2">
+    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
+      <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zm12.553 1.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/></svg>
+    </div>
+    <span class="font-bold text-lg tracking-tight">FY-IPTV</span>
+  </div>
+  <button @click="showModal=true" class="btn-primary px-5 py-2 rounded-lg text-sm font-medium text-white">
+    登录 / 注册
+  </button>
+</nav>
+
+<!-- Hero -->
+<section class="relative z-10 text-center px-6 pt-20 pb-16 max-w-4xl mx-auto">
+  <div class="inline-flex items-center gap-2 glass rounded-full px-4 py-1.5 text-xs text-purple-300 mb-6">
+    <span class="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
+    稳定运行中 · 实时更新
+  </div>
+  <h1 class="text-5xl md:text-6xl font-extrabold mb-6 leading-tight">
+    <span class="gradient-text">高清直播</span><br>触手可及
+  </h1>
+  <p class="text-gray-400 text-lg mb-8 max-w-xl mx-auto">
+    海量直播频道，自动过滤失效源，稳定流畅，支持主流播放器
+  </p>
+  <button @click="showModal=true" class="btn-primary px-8 py-3.5 rounded-xl text-base font-semibold text-white">
+    立即开始 →
+  </button>
+
+  <!-- Features -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-16">
+    <template x-for="f in features">
+      <div class="glass rounded-2xl p-5 text-left">
+        <div class="w-10 h-10 rounded-xl mb-3 flex items-center justify-center text-xl" :class="f.bg" x-text="f.icon"></div>
+        <h3 class="font-semibold mb-1" x-text="f.title"></h3>
+        <p class="text-gray-400 text-sm" x-text="f.desc"></p>
+      </div>
+    </template>
+  </div>
+</section>
+
+<!-- Plans Preview -->
+<section class="relative z-10 px-6 pb-24 max-w-5xl mx-auto" x-show="plans.length">
+  <h2 class="text-2xl font-bold text-center mb-8">订阅套餐</h2>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <template x-for="(p, i) in plans" :key="p.id">
+      <div class="glass rounded-2xl p-6 relative overflow-hidden hover:border-purple-500/50 transition-colors cursor-pointer" @click="showModal=true">
+        <div x-show="i===1" class="absolute top-3 right-3 bg-gradient-to-r from-purple-500 to-blue-500 text-white text-xs px-2.5 py-1 rounded-full font-medium">推荐</div>
+        <h3 class="font-bold text-lg mb-1" x-text="p.name"></h3>
+        <div class="text-3xl font-extrabold gradient-text my-3">
+          ¥<span x-text="p.price"></span>
+        </div>
+        <p class="text-gray-400 text-sm mb-1" x-text="`有效期 ${p.duration_days} 天`"></p>
+        <p class="text-gray-500 text-xs" x-text="p.description"></p>
+        <button class="mt-4 w-full btn-primary py-2 rounded-lg text-sm font-medium text-white">立即购买</button>
+      </div>
+    </template>
+  </div>
+</section>
+
+<!-- Modal -->
+<div x-show="showModal" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+  class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="showModal=false">
+  <div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+  <div class="relative glass rounded-2xl p-8 w-full max-w-sm" @click.stop>
+    <!-- Tabs -->
+    <div class="flex mb-6 border-b border-white/10">
+      <button @click="tab='login'" class="flex-1 pb-3 text-sm font-medium transition-colors" :class="tab==='login'?'tab-active':'text-gray-400 hover:text-gray-200'">登录</button>
+      <button @click="tab='register'" class="flex-1 pb-3 text-sm font-medium transition-colors" :class="tab==='register'?'tab-active':'text-gray-400 hover:text-gray-200'">注册</button>
+    </div>
+
+    <!-- Login Form -->
+    <div x-show="tab==='login'" x-transition>
+      <div class="space-y-4">
+        <input x-model="form.username" type="text" placeholder="用户名" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500 transition-colors">
+        <input x-model="form.password" type="password" placeholder="密码" @keydown.enter="doLogin" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500 transition-colors">
+        <p x-show="error" x-text="error" class="text-red-400 text-xs"></p>
+        <button @click="doLogin" :disabled="loading" class="btn-primary w-full py-3 rounded-xl text-sm font-semibold text-white disabled:opacity-50">
+          <span x-show="!loading">登录</span>
+          <span x-show="loading">登录中...</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Register Form -->
+    <div x-show="tab==='register'" x-transition>
+      <div class="space-y-4">
+        <input x-model="form.username" type="text" placeholder="用户名（至少3位）" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500 transition-colors">
+        <input x-model="form.password" type="password" placeholder="密码（至少6位）" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500 transition-colors">
+        <input x-model="form.invite_code" type="text" placeholder="邀请码（选填）" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500 transition-colors">
+        <p x-show="error" x-text="error" class="text-red-400 text-xs"></p>
+        <button @click="doRegister" :disabled="loading" class="btn-primary w-full py-3 rounded-xl text-sm font-semibold text-white disabled:opacity-50">
+          <span x-show="!loading">注册</span>
+          <span x-show="loading">注册中...</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function app() {
+  return {
+    showModal: false,
+    tab: 'login',
+    form: { username: '', password: '', invite_code: '' },
+    error: '',
+    loading: false,
+    plans: [],
+    features: [
+      { icon: '📡', bg: 'bg-purple-500/20', title: '自动更新', desc: '每小时同步最新频道，实时过滤失效源' },
+      { icon: '🔒', bg: 'bg-blue-500/20', title: '独立订阅', desc: '专属订阅地址，支持限制同时在线设备数' },
+      { icon: '📱', bg: 'bg-green-500/20', title: '多端兼容', desc: '支持 TiviMate、Kodi、VLC 等主流播放器' },
+    ],
+
+    async init() {
+      if (localStorage.getItem('token')) {
+        window.location.href = '/dashboard.html';
+        return;
+      }
+      try {
+        const r = await fetch('/api/orders/plans');
+        this.plans = await r.json();
+      } catch(e) {}
+    },
+
+    async doLogin() {
+      this.error = ''; this.loading = true;
+      try {
+        const r = await fetch('/api/user/login', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({username: this.form.username, password: this.form.password})
+        });
+        const data = await r.json();
+        if (!r.ok) { this.error = data.detail || '登录失败'; return; }
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('username', data.username);
+        localStorage.setItem('is_admin', data.is_admin);
+        window.location.href = data.is_admin ? '/admin.html' : '/dashboard.html';
+      } catch(e) { this.error = '网络错误，请重试'; }
+      finally { this.loading = false; }
+    },
+
+    async doRegister() {
+      this.error = ''; this.loading = true;
+      try {
+        const r = await fetch('/api/user/register', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify(this.form)
+        });
+        const data = await r.json();
+        if (!r.ok) { this.error = data.detail || '注册失败'; return; }
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('username', data.username);
+        window.location.href = '/dashboard.html';
+      } catch(e) { this.error = '网络错误，请重试'; }
+      finally { this.loading = false; }
+    }
+  }
+}
+</script>
+</body>
+</html>
