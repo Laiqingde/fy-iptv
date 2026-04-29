@@ -1,4 +1,12 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, Float, ForeignKey, Text
+# 数据库模型
+#
+# User        - 用户账号，含订阅到期时间、M3U token、设备上限
+# Plan        - 订阅套餐（名称、价格、有效天数）
+# Order       - 支付订单，status: 0=待支付 1=已支付 2=已失效
+# InviteCode  - 邀请码，支持限制使用次数
+# DeviceLog   - 设备访问记录，用于并发设备数统计（按 IP 去重）
+
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, Float, ForeignKey
 from sqlalchemy.orm import relationship
 from database import Base
 from datetime import datetime
@@ -40,7 +48,7 @@ class Order(Base):
     trade_no = Column(String(64), nullable=True)
     amount = Column(Float, nullable=False)
     duration_days = Column(Integer, nullable=False)
-    status = Column(Integer, default=0)  # 0=pending 1=paid 2=expired
+    status = Column(Integer, default=0)  # 0=待支付 1=已支付 2=已失效
     payment_type = Column(String(16), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     paid_at = Column(DateTime, nullable=True)

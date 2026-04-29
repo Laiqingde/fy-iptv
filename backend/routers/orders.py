@@ -1,9 +1,18 @@
+# 订单路由
+#
+# GET  /api/orders/plans        - 获取全部有效套餐（公开）
+# POST /api/orders/create       - 创建订单并返回支付链接（需登录）
+# GET  /api/orders/notify       - 支付平台异步回调入口（验签 → 更新订单 → 延长有效期）
+# GET  /api/orders/my           - 当前用户的订单历史（需登录）
+#
+# 续费逻辑：若用户订阅未过期则在到期日追加天数，已过期则从当前时间起算
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from database import get_db
 import models, auth, payment, config
-from datetime import datetime
+from datetime import datetime, timedelta
 import secrets
 
 router = APIRouter(tags=["订单"])
@@ -33,8 +42,6 @@ def create_order(body: CreateOrderIn, request: Request,
 
     out_trade_no = f"FY{datetime.utcnow().strftime('%Y%m%d%H%M%S')}{secrets.token_hex(4).upper()}"
     base = config.APP['base_url']
-    notify_url = f"{base}/api/orders/notify"
-    return_url = f"{base}/dashboard.html"
 
     order = models.Order(
         user_id=user.id,
@@ -51,8 +58,8 @@ def create_order(body: CreateOrderIn, request: Request,
         out_trade_no=out_trade_no,
         name=f"{config.APP['title']} - {plan.name}",
         money=plan.price,
-        notify_url=notify_url,
-        return_url=return_url,
+        notify_url=f"{base}/api/orders/notify",
+        return_url=f"{base}/dashboard.html",
         pay_type=body.pay_type,
     )
     return {"pay_url": pay_url, "out_trade_no": out_trade_no}
@@ -70,6 +77,7 @@ def payment_notify(request: Request, db: Session = Depends(get_db)):
     out_trade_no = params.get('out_trade_no')
     order = db.query(models.Order).filter_by(out_trade_no=out_trade_no).first()
     if not order or order.status == 1:
+        # 订单不存在或已处理过，幂等返回 success
         return "success"
 
     order.status = 1
@@ -80,7 +88,6 @@ def payment_notify(request: Request, db: Session = Depends(get_db)):
     if user:
         now = datetime.utcnow()
         base = user.expired_at if user.expired_at and user.expired_at > now else now
-        from datetime import timedelta
         user.expired_at = base + timedelta(days=order.duration_days)
 
     db.commit()

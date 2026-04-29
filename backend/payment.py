@@ -1,3 +1,11 @@
+# 彩虹易支付 Python 客户端
+# 对应 PHP SDK 的 EpayCore 类，实现了以下功能：
+#   - _sign: 用商户私钥对参数做 RSA-SHA256 签名
+#   - verify_callback: 用平台公钥验证异步回调签名，同时校验时间戳防重放（±300s）
+#   - get_pay_url: 构造带签名的支付跳转链接
+#   - query_order: 查询订单支付状态
+# 签名规则：参数按 key 字母序排列，拼成 k=v&k=v 字符串，排除 sign/sign_type 及空值
+
 import base64, time, urllib.parse
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
@@ -29,6 +37,7 @@ def verify_callback(params: dict) -> bool:
     if not params.get('sign'):
         return False
     ts = params.get('timestamp', 0)
+    # 防重放：回调时间戳与服务器时间差不超过 300 秒
     if abs(time.time() - int(ts)) > 300:
         return False
     key_pem = (

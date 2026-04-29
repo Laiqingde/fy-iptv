@@ -1,3 +1,8 @@
+# JWT 鉴权 + 密码工具
+# - create_token: 生成7天有效期的 JWT
+# - get_current_user: FastAPI Depends，解析 Bearer Token 返回用户对象
+# - require_admin: 在 get_current_user 基础上额外校验管理员身份
+
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
 from passlib.context import CryptContext

@@ -1,9 +1,16 @@
+# 用户路由
+#
+# POST /api/user/register  - 注册（支持开放注册和邀请码两种模式，由 config.json 控制）
+# POST /api/user/login     - 登录，返回 JWT token
+# GET  /api/user/me        - 获取当前用户信息（订阅状态、活跃设备、M3U 地址）
+# POST /api/user/reset-token - 重置 M3U token（旧地址立即失效）
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from database import get_db
 import models, auth, config
-from datetime import datetime
+from datetime import datetime, timedelta
 import secrets
 
 router = APIRouter(tags=["用户"])
@@ -67,8 +74,6 @@ def me(user: models.User = Depends(auth.get_current_user), db: Session = Depends
     days_left = max(0, (expired - now).days) if expired else 0
     is_expired = (not expired) or (expired < now)
 
-    # active devices in last 10 min
-    from datetime import timedelta
     cutoff = now - timedelta(minutes=10)
     devices = db.query(models.DeviceLog).filter(
         models.DeviceLog.user_id == user.id,
